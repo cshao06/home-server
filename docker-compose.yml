@@ -1,0 +1,132 @@
+version: '3'
+
+services:
+  mariadb_nextcloud:
+    image: mariadb
+    container_name: mariadb_nextcloud
+    command: --transaction-isolation=READ-COMMITTED --log-bin=mysql-bin --binlog-format=ROW
+    restart: always
+    volumes:
+      - /path/to/mariadb/data/folder:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_PASSWORD=password
+      - MYSQL_DATABASE=user
+      - MYSQL_USER=user
+
+  nextcloud:
+    image: nextcloud:fpm
+    container_name: nextcloud
+    depends_on:
+      - mariadb_nextcloud
+    volumes:
+      - /path/to/nextcloud/site:/var/www/html
+      - /path/to/php/www2.conf:/usr/local/etc/php-fpm.d/www2.conf:ro
+      - /path/to/php/max-execution-time.ini:/usr/local/etc/php/conf.d/max-execution-time.ini:ro
+    environment:
+      - MYSQL_HOST=mariadb_nextcloud
+      - MYSQL_PASSWORD=password
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=user
+    restart: always
+
+  nginx:
+    image: nginx
+    container_name: nginx
+    volumes:
+      - /path/to/nginx:/etc/nginx
+      - /path/to/nextcloud/site:/var/www/html/nextcloud:ro
+      - /path/to/wordpress:/var/www/html/wordpress
+    restart: always
+
+  letsencrypt:
+    image: linuxserver/letsencrypt
+    container_name: letsencrypt
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - URL=your.url
+      - SUBDOMAINS=subdomains
+      - VALIDATION=validation
+      - DNSPLUGIN=plugin
+      - EMAIL=email
+    volumes:
+      - /path/to/config:/config
+    restart: unless-stopped
+
+  onlyoffice:
+    container_name: onlyoffice
+    image: onlyoffice/documentserver
+    stdin_open: true
+    tty: true
+    restart: always
+    volumes:
+      - /path/to/data:/var/www/onlyoffice/Data
+      - /path/to/log:/var/log/onlyoffice
+
+  v2ray:
+    image: v2ray/official
+    container_name: v2ray
+    restart: always
+    expose:
+      - 'port'
+    environment:
+      V2RAY_LOCATION_CONFIG: /etc/v2ray
+    volumes:
+      - /path/to/config.json:/etc/v2ray/config.json:ro
+
+  mariadb_wordpress:
+    image: mariadb
+    container_name: mariadb_wordpress
+    #command: --transaction-isolation=READ-COMMITTED --log-bin=mysql-bin --binlog-format=ROW
+    restart: always
+    volumes:
+      - /path/to/data:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_DATABASE=name
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+
+  wordpress:
+    image: wordpress:php7.4-fpm-alpine
+    container_name: wordpress
+    restart: always
+    volumes:
+      - /path/to/wordpress:/var/www/html
+    depends_on:
+      - mariadb_wordpress
+    environment:
+      WORDPRESS_DB_HOST: mariadb_wordpress
+      WORDPRESS_DB_NAME: name
+      WORDPRESS_DB_USER: user
+      WORDPRESS_DB_PASSWORD: password
+
+     plex:
+       #image: plexinc/pms-docker
+       image: linuxserver/plex
+       container_name: plex
+       #network_mode: host
+       ports:
+         - "32400:32400/tcp"
+         - "3005:3005/tcp"
+         - "8324:8324/tcp"
+         - "32469:32469/tcp"
+         - "1900:1900/udp"
+         - "32410:32410/udp"
+         - "32412:32412/udp"
+         - "32413:32413/udp"
+         - "32414:32414/udp"
+       environment:
+         - VERSION=docker
+       hostname: hostname
+       volumes:
+         - /path/to/config:/config
+         - /path/to/videos:/movies
+       restart: unless-stopped
+
